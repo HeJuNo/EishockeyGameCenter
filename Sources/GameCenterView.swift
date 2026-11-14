@@ -5,30 +5,32 @@ struct GameCenterView: View {
     @State private var controller = WebController()
 
     var body: some View {
-        ZStack {
-            WebViewContainer(webView: controller.webView)
-                .ignoresSafeArea(edges: .bottom)
-            if controller.state == .failed {
-                VStack(spacing: 12) {
-                    Image(systemName: "wifi.slash").font(.largeTitle)
-                    Text("The Game Center could not be loaded.")
-                    Button("Retry") { controller.reload() }.buttonStyle(.borderedProminent)
+        VStack(spacing: 0) {
+            if controller.canGoBack {  // own bar, so the button never covers the page
+                HStack {
+                    Button { controller.goBack() } label: {
+                        Image(systemName: "chevron.left").font(.headline).frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("Back")
+                    Spacer()
                 }
-                .padding()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(.background)
-            } else if controller.state == .loading {
-                ProgressView().controlSize(.large)
+                .background(.bar)
             }
-        }
-        .overlay(alignment: .topLeading) {
-            if controller.canGoBack {
-                Button { controller.goBack() } label: {
-                    Image(systemName: "chevron.left").font(.headline).padding(12)
-                        .background(.regularMaterial, in: Circle())
+            ZStack {
+                WebViewContainer(webView: controller.webView)
+                    .ignoresSafeArea(edges: .bottom)
+                if controller.state == .failed {
+                    VStack(spacing: 12) {
+                        Image(systemName: "wifi.slash").font(.largeTitle)
+                        Text("The Game Center could not be loaded.")
+                        Button("Retry") { controller.reload() }.buttonStyle(.borderedProminent)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(.background)
+                } else if controller.state == .loading {
+                    ProgressView().controlSize(.large)
                 }
-                .accessibilityLabel("Back")
-                .padding(.leading, 12)
             }
         }
     }
