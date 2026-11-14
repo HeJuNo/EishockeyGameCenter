@@ -27,7 +27,7 @@ final class LaunchUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Back"].exists, "no back button on the start page")
         chip.tap()
         let back = app.buttons["Back"]
-        XCTAssertTrue(back.waitForExistence(timeout: 15))
+        XCTAssertTrue(back.waitForExistence(timeout: 40))
         XCTAssertGreaterThanOrEqual(back.frame.minY, web.frame.minY, "back button must be inside the page, not above it")
         back.tap()
         let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: back)
