@@ -3,6 +3,7 @@ import UIKit
 /// The site has no dark theme, so the app paints one. The site's utility classes read their colors from
 /// CSS variables; `--color-white` is the card/table/ring color, so one override darkens all of them, and
 /// elements with white text or icons get the real white back. Page and text colors are set by class.
+/// The lineup (an SVG ice graphic with fill-navy-900 text and tiles) stays light and is deliberately not touched.
 /// shortcut: follows the live site's class names (2026-11-14), recheck the dark pages when the site changes.
 enum DarkTheme {
     static let className = "egc-dark"
@@ -28,8 +29,6 @@ enum DarkTheme {
     html.egc-dark [class~="text-navy-900"], html.egc-dark [class~="text-navy-950"], html.egc-dark [class~="text-navy-800"] { color: #e8f0fa !important; }
     html.egc-dark [class~="text-navy-700"] { color: #a9c3e6 !important; }
     html.egc-dark [class~="text-red-600"] { color: #ff6a5e !important; }
-    html.egc-dark [class~="fill-navy-900"] { fill: #e8f0fa !important; }
-    html.egc-dark [class~="stroke-navy-900"] { stroke: #e8f0fa !important; }
     html.egc-dark td:not([class*="bg-"]) { background-color: #0d1b2f !important; }
     html.egc-dark th:not([class*="bg-"]) { background-color: #0e1d33 !important; }
     html.egc-dark #egc-back, html.egc-dark #egc-gear { color: #e8f0fa; }

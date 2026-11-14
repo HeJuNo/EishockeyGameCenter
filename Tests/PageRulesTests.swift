@@ -122,6 +122,15 @@ import WebKit
         #expect(try await style("#white-text", "--color-white", in: web) == "#fff") // text-white stays white
     }
 
+    /// The page wrapper (class "rink") turns dark; the lineup graphic is a light ice SVG and keeps its colors.
+    @Test func pageWrapperTurnsDarkButTheLineupGraphicStaysAsIs() async throws {
+        let web = try await load("game-center-structure", dark: true)
+        #expect(try await style("#rink", "background-color", in: web) == "rgb(7, 17, 31)")
+        #expect(try await style("#lineup-name", "fill", in: web) == "rgb(4, 30, 66)")
+        #expect(try await style("#lineup-tile", "fill", in: web) == "rgb(255, 255, 255)")
+        #expect(try await style("#lineup-tile", "stroke", in: web) == "rgb(4, 30, 66)")
+    }
+
     @Test func lightPageIsUntouchedWithoutTheDarkClass() async throws {
         let web = try await load("game-center-structure")
         #expect(try await style("#title", "color", in: web) != "rgb(232, 240, 250)")
