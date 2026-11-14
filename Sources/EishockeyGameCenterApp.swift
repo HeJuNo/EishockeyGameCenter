@@ -4,7 +4,7 @@ import SwiftUI
 struct EishockeyGameCenterApp: App {
     var body: some Scene {
         WindowGroup {
-            Text("Eishockey GameCenter")
+            GameCenterView()
         }
     }
 }
