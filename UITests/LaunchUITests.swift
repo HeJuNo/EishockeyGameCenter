@@ -16,17 +16,21 @@ final class LaunchUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Retry"].waitForExistence(timeout: 15))
     }
 
-    /// The back button must sit above the page, not float over its content.
-    @MainActor func testBackButtonDoesNotCoverThePage() {
+    /// The back button sits inside the page's tab bar and brings you back to the start page.
+    @MainActor func testBackButtonInTabBarGoesBack() {
         let app = XCUIApplication()
         app.launch()
         let web = app.webViews.firstMatch
         XCTAssertTrue(web.waitForExistence(timeout: 15))
         let chip = app.links["ICE"].firstMatch  // league chip in the hero opens the league page
         XCTAssertTrue(chip.waitForExistence(timeout: 20))
+        XCTAssertFalse(app.buttons["Back"].exists, "no back button on the start page")
         chip.tap()
         let back = app.buttons["Back"]
         XCTAssertTrue(back.waitForExistence(timeout: 15))
-        XCTAssertLessThanOrEqual(back.frame.maxY, web.frame.minY + 1, "back button overlaps the web view")
+        XCTAssertGreaterThanOrEqual(back.frame.minY, web.frame.minY, "back button must be inside the page, not above it")
+        back.tap()
+        let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: back)
+        wait(for: [gone], timeout: 10)  // back on the start page, the button is hidden again
     }
 }

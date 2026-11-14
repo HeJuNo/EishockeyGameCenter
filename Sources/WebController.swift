@@ -3,7 +3,7 @@ import UIKit
 import WebKit
 
 @Observable
-final class WebController: NSObject, WKNavigationDelegate {
+final class WebController: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
     let webView: WKWebView
     private(set) var state: LoadState = .loading
     private(set) var canGoBack = false
@@ -17,13 +17,14 @@ final class WebController: NSObject, WKNavigationDelegate {
         config.userContentController.addUserScript(PageRules.userScript())
         webView = WKWebView(frame: .zero, configuration: config)
         super.init()
+        webView.configuration.userContentController.add(WeakMessageHandler(self), name: PageRules.backMessageName)
         webView.navigationDelegate = self
         webView.allowsBackForwardNavigationGestures = true
         let refresh = UIRefreshControl()
         refresh.addTarget(self, action: #selector(pulledToRefresh), for: .valueChanged)
         webView.scrollView.refreshControl = refresh
         backObservation = webView.observe(\.canGoBack, options: [.initial, .new]) { [weak self] web, _ in
-            MainActor.assumeIsolated { self?.canGoBack = web.canGoBack }
+            MainActor.assumeIsolated { self?.canGoBack = web.canGoBack; self?.showBackButton() }
         }
         webView.load(URLRequest(url: url))
     }
@@ -42,6 +43,13 @@ final class WebController: NSObject, WKNavigationDelegate {
     }
 
     func goBack() { webView.goBack() }
+
+    /// Tells the page whether its in-page back button is visible.
+    private func showBackButton() {
+        webView.evaluateJavaScript("document.documentElement.classList.toggle('\(PageRules.canGoBackClass)', \(canGoBack))")
+    }
+
+    func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage) { goBack() }
 
     @objc private func pulledToRefresh() { reload() }
 
@@ -66,7 +74,16 @@ final class WebController: NSObject, WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) { state = .loading }
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { finish(nil) }
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { finish(nil); showBackButton() }
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { finish(error) }
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { finish(error) }
+}
+
+/// The user content controller retains its handlers, so it gets a weak proxy to avoid a retain cycle.
+private final class WeakMessageHandler: NSObject, WKScriptMessageHandler {
+    private weak var target: WKScriptMessageHandler?
+    init(_ target: WKScriptMessageHandler) { self.target = target }
+    func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage) {
+        target?.userContentController(c, didReceive: message)
+    }
 }
