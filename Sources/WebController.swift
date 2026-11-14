@@ -48,7 +48,9 @@ final class WebController: NSObject, WKNavigationDelegate {
     private func finish(_ error: Error?) {
         webView.scrollView.refreshControl?.endRefreshing()
         guard let error else { state = .loaded; return }
-        if let failure = LoadState.failure(for: error) { state = failure }
+        if let failure = LoadState.failure(for: error) { state = failure; return }
+        // A cancelled navigation that no new load follows: settle on the page that is still shown.
+        if !webView.isLoading { state = webView.url == nil ? .failed : .loaded }
     }
 
     // MARK: WKNavigationDelegate

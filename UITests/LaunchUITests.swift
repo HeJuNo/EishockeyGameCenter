@@ -12,5 +12,7 @@ final class LaunchUITests: XCTestCase {
         app.launchArguments = ["-startURL", "https://game-center.invalid/"]
         app.launch()
         XCTAssertTrue(app.buttons["Retry"].waitForExistence(timeout: 15))
+        app.buttons["Retry"].tap()  // reloads, fails again, error screen comes back
+        XCTAssertTrue(app.buttons["Retry"].waitForExistence(timeout: 15))
     }
 }
