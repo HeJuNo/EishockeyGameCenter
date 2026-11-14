@@ -37,7 +37,7 @@ struct GameCenterView: View {
         .onChange(of: WatchStore.shared.pages) { _, _ in controller.syncPageState() }   // e.g. a page was stopped in the settings
         .onChange(of: isDark) { _, dark in controller.setDark(dark) }
         .sheet(isPresented: $controller.showSettings) {
-            SettingsView(stored: $stored).presentationDetents([.medium])
+            SettingsView(stored: $stored).presentationDetents([.large])
         }
     }
 }

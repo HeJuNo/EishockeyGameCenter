@@ -53,4 +53,36 @@ final class LaunchUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Dark"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Dark"].isSelected, "the choice is still Dark")
     }
+
+    private func openSettings(_ app: XCUIApplication) {
+        let gear = app.buttons["Settings"]
+        XCTAssertTrue(gear.waitForExistence(timeout: 20), "settings button on the start page")
+        gear.tap()
+        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
+    }
+
+    /// A watched page is listed in the settings and can be stopped there.
+    @MainActor func testWatchedPageShowsInSettingsAndCanBeStopped() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-appearance", "system", "-watchSeed", "game"]
+        app.launch()
+        openSettings(app)
+        let row = app.staticTexts["Seed game"]
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.swipeLeft()
+        app.buttons["Stop watching"].tap()
+        let empty = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Nothing watched yet'")).firstMatch
+        XCTAssertTrue(empty.waitForExistence(timeout: 5))
+    }
+
+    @MainActor func testCategorySwitchesExist() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-appearance", "system", "-watchSeed", "none"]
+        app.launch()
+        openSettings(app)
+        for title in ["Scores and game start/end", "Lineups", "Statistics and tables"] {
+            XCTAssertTrue(app.switches[title].waitForExistence(timeout: 5), title)
+        }
+        XCTAssertTrue(app.buttons["Check now"].exists)
+    }
 }
