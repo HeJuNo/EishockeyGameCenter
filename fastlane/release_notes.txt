@@ -1,0 +1,2 @@
+What's new:
+- First version: the Game Center of eishockey.at in its own app
