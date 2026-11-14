@@ -25,7 +25,7 @@ enum PageParser {
         let text = visibleText(html)
         guard text.count >= minimumTextLength else { return nil }
         let heading = firstGroup(#"(?is)<h1[^>]*>(.*?)</h1>"#, in: html).map { plain($0) }.flatMap { $0.isEmpty ? nil : $0 }
-        let hash = SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
+        let hash = SHA256.hash(data: Data(blocks(html).sorted().joined(separator: "\u{1F}").utf8)).map { String(format: "%02x", $0) }.joined()
         var game: GameInfo?
         if kind == .game {
             let beforeBar = pageTitle.split(separator: "|", maxSplits: 1).first.map(String.init) ?? pageTitle
@@ -37,6 +37,26 @@ enum PageParser {
     }
 
     // MARK: text
+
+    /// The page's text in blocks: every table row as one block, every other text node on its own.
+    /// The site streams parts of a page in a changing order, so the hash is taken over the sorted blocks:
+    /// the same page hashes the same in any order, while a changed cell or a changed rank still changes it.
+    static func blocks(_ html: String) -> [String] {
+        let stripped = html.replacingOccurrences(of: #"(?is)<script.*?</script>|<style.*?</style>|<!--.*?-->"#, with: " ", options: .regularExpression)
+        let rowPattern = #"(?is)<tr[^>]*>.*?</tr>"#
+        var out: [String] = []
+        let rows = try! NSRegularExpression(pattern: rowPattern)
+        for m in rows.matches(in: stripped, range: NSRange(stripped.startIndex..., in: stripped)) {
+            if let range = Range(m.range, in: stripped) { let t = plain(String(stripped[range])); if !t.isEmpty { out.append(t) } }
+        }
+        let rest = stripped.replacingOccurrences(of: rowPattern, with: "<x>", options: .regularExpression)
+        let nodes = try! NSRegularExpression(pattern: #">([^<]+)<"#)
+        for m in nodes.matches(in: rest, range: NSRange(rest.startIndex..., in: rest)) {
+            if let range = Range(m.range(at: 1), in: rest) { let t = collapse(decodeEntities(String(rest[range]))); if !t.isEmpty { out.append(t) } }
+        }
+        return out
+    }
+
     static func visibleText(_ html: String) -> String {
         var s = html.replacingOccurrences(of: #"(?is)<script.*?</script>|<style.*?</style>|<!--.*?-->"#, with: " ", options: .regularExpression)
         s = s.replacingOccurrences(of: #"<[^>]+>"#, with: " ", options: .regularExpression)

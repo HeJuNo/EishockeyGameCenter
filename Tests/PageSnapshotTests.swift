@@ -45,6 +45,25 @@ import Testing
         #expect(a.textHash != c.textHash)
     }
 
+    /// The site streams parts of a page in a changing order and moves content between inline and streamed blocks:
+    /// the same page must hash the same, whatever the order of its blocks.
+    @Test func hashIgnoresTheOrderOfBlocks() throws {
+        let rows = "<tr><td>1</td><td>Salzburg</td><td>41</td></tr><tr><td>2</td><td>Villach</td><td>39</td></tr>"
+        let rowsReordered = "<tr><td>2</td><td>Villach</td><td>39</td></tr><tr><td>1</td><td>Salzburg</td><td>41</td></tr>"
+        let a = document(text: "<p>Torhüter</p><table>\(rows)</table><p>Spielplan</p>")
+        let b = document(text: "<p>Spielplan</p><table>\(rowsReordered)</table><p>Torhüter</p>")
+        let ha = try #require(PageParser.snapshot(html: a, kind: .team)).textHash
+        let hb = try #require(PageParser.snapshot(html: b, kind: .team)).textHash
+        #expect(ha == hb)
+    }
+
+    @Test func hashSeesChangedCellsAndSwappedRanks() throws {
+        func hash(_ rows: String) throws -> String { try #require(PageParser.snapshot(html: document(text: "<table>\(rows)</table>"), kind: .table)).textHash }
+        let base = try hash("<tr><td>1</td><td>Salzburg</td><td>41</td></tr><tr><td>2</td><td>Villach</td><td>39</td></tr>")
+        #expect(base != (try hash("<tr><td>1</td><td>Salzburg</td><td>42</td></tr><tr><td>2</td><td>Villach</td><td>39</td></tr>")))   // a point more
+        #expect(base != (try hash("<tr><td>1</td><td>Villach</td><td>39</td></tr><tr><td>2</td><td>Salzburg</td><td>41</td></tr>")))   // the two teams swapped ranks
+    }
+
     @Test func unreadablePagesGiveNil() throws {
         #expect(PageParser.snapshot(html: try fixture("error"), kind: .table) == nil)
         #expect(PageParser.snapshot(html: "", kind: .table) == nil)
