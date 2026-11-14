@@ -4,6 +4,10 @@ import WebKit
 struct GameCenterView: View {
     @State private var controller = WebController()
 
+    // The site is light only: page background and navy taken from its stylesheet (rgb 244,247,251 and 4,30,66).
+    private static let pageBackground = Color(red: 244 / 255, green: 247 / 255, blue: 251 / 255)
+    private static let navy = Color(red: 4 / 255, green: 30 / 255, blue: 66 / 255)
+
     var body: some View {
         VStack(spacing: 0) {
             if controller.canGoBack {  // own bar, so the button never covers the page
@@ -14,7 +18,7 @@ struct GameCenterView: View {
                     .accessibilityLabel("Back")
                     Spacer()
                 }
-                .background(.bar)
+                .tint(Self.navy)
             }
             ZStack {
                 WebViewContainer(webView: controller.webView)
@@ -33,6 +37,8 @@ struct GameCenterView: View {
                 }
             }
         }
+        .background(Self.pageBackground.ignoresSafeArea())
+        .preferredColorScheme(.light)
     }
 }
 

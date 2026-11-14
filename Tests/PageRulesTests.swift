@@ -57,6 +57,20 @@ import WebKit
         #expect(try await isVisible("section[id] article > footer", in: web))
     }
 
+    private func stickyTop(_ selector: String, in webView: WKWebView) async throws -> String {
+        let result = try await webView.callAsyncJavaScript(
+            "return getComputedStyle(document.querySelector(sel)).top", arguments: ["sel": selector], contentWorld: .page)
+        return result as? String ?? ""
+    }
+
+    /// The site sticks its league tabs at 56 pt (under the header we hide); without the header they must stick at the top.
+    @Test func movesStickyBarsUpByTheHiddenHeader() async throws {
+        let web = try await load("game-center-structure")
+        for _ in 0..<40 where try await stickyTop("#tabs", in: web) != "0px" { try await Task.sleep(for: .milliseconds(50)) }
+        #expect(try await stickyTop("#tabs", in: web) == "0px")
+        #expect(try await stickyTop("#thead", in: web) == "45px")  // stays below the tabs, offset kept
+    }
+
     @Test func shouldStayInAppOnlyForEishockeyAtOverHTTPS() {
         let stay = ["https://www.eishockey.at/game-center/ice/spiel/icehl-8288?saison=2026", "https://eishockey.at/x"]
         let leave = ["https://eishockey.at.example.com/", "http://www.eishockey.at/",
