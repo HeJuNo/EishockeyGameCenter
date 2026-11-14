@@ -3,7 +3,10 @@ import UserNotifications
 
 @main
 struct EishockeyGameCenterApp: App {
+    @Environment(\.scenePhase) private var scenePhase
+
     init() {
+        BackgroundRefresh.register()
         UNUserNotificationCenter.current().delegate = NotificationRouter.shared   // before launch finishes, so a tapped notification is not missed
         #if DEBUG
         // UI tests: "-watchSeed game" starts with one watched game, "-watchSeed none" with nothing watched.
@@ -17,6 +20,9 @@ struct EishockeyGameCenterApp: App {
     var body: some Scene {
         WindowGroup {
             GameCenterView()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { BackgroundRefresh.schedule() }
         }
     }
 }
