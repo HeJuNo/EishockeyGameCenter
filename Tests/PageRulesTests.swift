@@ -216,6 +216,26 @@ import WebKit
         #expect(try await !isVisible("#egc-watch .egc-bell-fill", in: web))
     }
 
+    /// The site rewrites the class of <html> while it loads (about 15 ms after the load event): the classes the app wants must come back.
+    @Test func appClassesSurviveThePageResettingThem() async throws {
+        let web = try await load("game-center-structure")
+        for _ in 0..<40 where try await !hasElement("#egc-watch", in: web) { try await Task.sleep(for: .milliseconds(50)) }
+        _ = try await web.callAsyncJavaScript("window.__egcSet({ 'egc-watchable': true, 'egc-can-go-back': true })", contentWorld: .page)
+        func has(_ name: String) async throws -> Bool {
+            (try await web.callAsyncJavaScript("return document.documentElement.classList.contains(name)", arguments: ["name": name], contentWorld: .page)) as? Bool ?? false
+        }
+        #expect(try await has("egc-watchable"))
+        _ = try await web.callAsyncJavaScript("document.documentElement.className = 'site-class'", contentWorld: .page)   // what the page does
+        for _ in 0..<20 where try await !has("egc-watchable") { try await Task.sleep(for: .milliseconds(50)) }
+        #expect(try await has("egc-watchable"))
+        #expect(try await has("egc-can-go-back"))
+        #expect(try await has("site-class"))                       // the page's own class is kept
+        _ = try await web.callAsyncJavaScript("window.__egcSet({ 'egc-watchable': false })", contentWorld: .page)
+        _ = try await web.callAsyncJavaScript("document.documentElement.className = 'site-class'", contentWorld: .page)
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(try await !has("egc-watchable"))                    // switched off stays off
+    }
+
     @Test func shouldStayInAppOnlyForEishockeyAtOverHTTPS() {
         let stay = ["https://www.eishockey.at/game-center/ice/spiel/icehl-8288?saison=2026", "https://eishockey.at/x"]
         let leave = ["https://eishockey.at.example.com/", "http://www.eishockey.at/",

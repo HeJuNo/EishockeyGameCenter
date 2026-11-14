@@ -95,10 +95,8 @@ final class WebController: NSObject, WKNavigationDelegate, WKScriptMessageHandle
         let watchable = webView.url.map { Watchable.kind(of: $0) != nil } ?? false
         let watching = webView.url.map { store.isWatching($0) } ?? false
         webView.evaluateJavaScript("""
-        document.documentElement.classList.toggle('\(PageRules.canGoBackClass)', \(canGoBack));
-        document.documentElement.classList.toggle('\(DarkTheme.className)', \(isDark));
-        document.documentElement.classList.toggle('\(PageRules.watchableClass)', \(watchable));
-        document.documentElement.classList.toggle('\(PageRules.watchingClass)', \(watching));
+        window.__egcSet && window.__egcSet({ '\(PageRules.canGoBackClass)': \(canGoBack), '\(DarkTheme.className)': \(isDark),
+          '\(PageRules.watchableClass)': \(watchable), '\(PageRules.watchingClass)': \(watching) });
         """)
     }
 

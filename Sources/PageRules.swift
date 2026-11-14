@@ -46,7 +46,13 @@ enum PageRules {
         // shortcut: finds the bars by the "sticky" utility class under <main>, update when the site changes.
         let source = """
         (function () {
-          if (\(dark)) document.documentElement.classList.add('\(DarkTheme.className)');
+          // The site rewrites the class of <html> while it loads, shortly after the load event. The classes the app
+          // wants are therefore kept here and put back whenever the page changes the attribute.
+          var wanted = {};
+          function applyClasses() { var l = document.documentElement.classList; for (var k in wanted) l.toggle(k, wanted[k]); }
+          window.__egcSet = function (state) { for (var k in state) wanted[k] = !!state[k]; applyClasses(); };
+          new MutationObserver(applyClasses).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+          if (\(dark)) window.__egcSet({ '\(DarkTheme.className)': true });
           var style = document.createElement('style');
           style.id = 'egc-hide';
           style.textContent = \(jsStringLiteral(hideCSS + "\n" + barCSS + "\n" + DarkTheme.css));
