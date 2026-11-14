@@ -183,6 +183,39 @@ import WebKit
         return result as? Bool ?? false
     }
 
+    /// The bell sits in the tab bar between the tabs and the settings button, shown only on watchable pages.
+    @Test func watchButtonSitsBetweenTabsAndGear() async throws {
+        let web = try await load("game-center-structure")
+        for _ in 0..<40 where try await !hasElement("#tabs > #egc-watch", in: web) { try await Task.sleep(for: .milliseconds(50)) }
+        #expect(try await hasElement("#tabs > #egc-watch", in: web))
+        #expect(try await !isVisible("#egc-watch", in: web))
+        _ = try await web.callAsyncJavaScript("document.documentElement.classList.add('egc-watchable')", contentWorld: .page)
+        #expect(try await isVisible("#egc-watch", in: web))
+        let watch = try await rect("#egc-watch", in: web), tabs = try await rect("#tabs-inner", in: web), gear = try await rect("#egc-gear", in: web)
+        #expect(watch[0] >= tabs[2])
+        #expect(watch[2] <= gear[0] + 1)
+    }
+
+    @Test func watchButtonTellsTheApp() async throws {
+        let recorder = BackRecorder()
+        let web = try await load("game-center-structure", handlers: [PageRules.watchMessageName: recorder])
+        for _ in 0..<40 where try await !hasElement("#egc-watch", in: web) { try await Task.sleep(for: .milliseconds(50)) }
+        _ = try await web.callAsyncJavaScript("document.getElementById('egc-watch').click()", contentWorld: .page)
+        for _ in 0..<20 where recorder.taps == 0 { try await Task.sleep(for: .milliseconds(50)) }
+        #expect(recorder.taps == 1)
+    }
+
+    @Test func bellIsFilledWhileWatching() async throws {
+        let web = try await load("game-center-structure")
+        for _ in 0..<40 where try await !hasElement("#egc-watch .egc-bell-fill", in: web) { try await Task.sleep(for: .milliseconds(50)) }
+        _ = try await web.callAsyncJavaScript("document.documentElement.classList.add('egc-watchable')", contentWorld: .page)
+        #expect(try await !isVisible("#egc-watch .egc-bell-fill", in: web))
+        _ = try await web.callAsyncJavaScript("document.documentElement.classList.add('egc-watching')", contentWorld: .page)
+        #expect(try await isVisible("#egc-watch .egc-bell-fill", in: web))
+        _ = try await web.callAsyncJavaScript("document.documentElement.classList.remove('egc-watching')", contentWorld: .page)
+        #expect(try await !isVisible("#egc-watch .egc-bell-fill", in: web))
+    }
+
     @Test func shouldStayInAppOnlyForEishockeyAtOverHTTPS() {
         let stay = ["https://www.eishockey.at/game-center/ice/spiel/icehl-8288?saison=2026", "https://eishockey.at/x"]
         let leave = ["https://eishockey.at.example.com/", "http://www.eishockey.at/",

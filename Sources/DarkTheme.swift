@@ -31,6 +31,6 @@ enum DarkTheme {
     html.egc-dark [class~="text-red-600"] { color: #ff6a5e !important; }
     html.egc-dark td:not([class*="bg-"]) { background-color: #0d1b2f !important; }
     html.egc-dark th:not([class*="bg-"]) { background-color: #0e1d33 !important; }
-    html.egc-dark #egc-back, html.egc-dark #egc-gear { color: #e8f0fa; }
+    html.egc-dark #egc-back, html.egc-dark #egc-gear, html.egc-dark #egc-watch { color: #e8f0fa; }
     """
 }

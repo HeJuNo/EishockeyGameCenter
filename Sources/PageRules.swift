@@ -15,17 +15,26 @@ enum PageRules {
     static let backMessageName = "egcBack"
     /// Name of the script message the in-page settings button sends; WebController shows the settings menu.
     static let settingsMessageName = "egcSettings"
+    /// Name of the script message the in-page watch button (bell) sends; WebController starts or stops watching the page.
+    static let watchMessageName = "egcWatch"
+    /// The app toggles these classes on <html>: the shown page can be watched / is watched.
+    static let watchableClass = "egc-watchable"
+    static let watchingClass = "egc-watching"
     /// The app toggles this class on <html> while the web view can go back.
     static let canGoBackClass = "egc-can-go-back"
 
     // The back button sits inside the site's sticky tab bar, left of the tabs (navy = the site's 4,30,66).
     private static let barCSS = """
     .egc-bar { display: flex !important; align-items: center; }
-    .egc-bar > :not(#egc-back):not(#egc-gear) { flex: 1 1 0; min-width: 0; }
-    #egc-back, #egc-gear { flex: none; width: 44px; height: 44px; padding: 0; border: 0;
+    .egc-bar > :not(#egc-back):not(#egc-gear):not(#egc-watch) { flex: 1 1 0; min-width: 0; }
+    #egc-back, #egc-gear, #egc-watch { flex: none; width: 44px; height: 44px; padding: 0; border: 0;
       background: transparent; color: rgb(4, 30, 66); align-items: center; justify-content: center; display: flex; }
     #egc-back { display: none; margin-left: 4px; }
     html.\(canGoBackClass) #egc-back { display: flex; }
+    #egc-watch { display: none; }
+    html.\(watchableClass) #egc-watch { display: flex; }
+    #egc-watch .egc-bell-fill { display: none; }
+    html.\(watchingClass) #egc-watch .egc-bell-fill { display: block; }
     #egc-gear { margin-right: 4px; }
     #egc-gear.egc-hero { position: absolute; top: 8px; right: 8px; z-index: 2; margin: 0; color: #fff; }
     """
@@ -71,6 +80,16 @@ enum PageRules {
               host.appendChild(g);
             }
           }
+          function addWatch(bar) {
+            if (bar.querySelector(':scope > #egc-watch')) return;
+            var w = document.createElement('button');
+            w.id = 'egc-watch';
+            w.type = 'button';
+            w.setAttribute('aria-label', 'Watch this page');
+            w.innerHTML = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path class="egc-bell-fill" fill="currentColor" d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
+            w.addEventListener('click', function () { window.webkit.messageHandlers.\(watchMessageName).postMessage(0); });
+            bar.insertBefore(w, document.getElementById('egc-gear'));  // between the tabs and the settings button
+          }
           function shift() {
             queued = false;
             var found = [];
@@ -85,7 +104,7 @@ enum PageRules {
             found.forEach(function (e) {
               var top = parseFloat(e.dataset.egcTop);
               e.style.setProperty('top', (top - base) + 'px', 'important');
-              if (top === base) { addBack(e); addGear(e, false); }  // the top bar only, not the table headers stuck below it
+              if (top === base) { addBack(e); addGear(e, false); addWatch(e); }  // the top bar only, not the table headers stuck below it
             });
             if (found.length === 0) {  // start page: no tab bar, the settings button goes into the hero
               var hero = Array.prototype.find.call(document.querySelectorAll('main header'), function (h) { return !h.closest('article, section'); });

@@ -30,7 +30,11 @@ struct GameCenterView: View {
         // The status area shows the page color, so it matches the site in both modes.
         .background(Color(isDark ? DarkTheme.pageBackground : DarkTheme.lightPageBackground).ignoresSafeArea())
         .preferredColorScheme(setting.colorScheme)
-        .onAppear { controller.start(dark: isDark) }
+        .onAppear {
+            NotificationRouter.shared.onOpen = { controller.open($0) }
+            controller.start(dark: isDark)
+        }
+        .onChange(of: WatchStore.shared.pages) { _, _ in controller.syncPageState() }   // e.g. a page was stopped in the settings
         .onChange(of: isDark) { _, dark in controller.setDark(dark) }
         .sheet(isPresented: $controller.showSettings) {
             SettingsView(stored: $stored).presentationDetents([.medium])

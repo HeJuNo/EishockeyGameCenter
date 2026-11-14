@@ -10,9 +10,13 @@ final class WebController: NSObject, WKNavigationDelegate, WKScriptMessageHandle
     private(set) var isDark = false
     var showSettings = false  // the settings sheet, opened by the in-page settings button
     @ObservationIgnored private var started = false
+    @ObservationIgnored private var launchURL: URL?    // a page to open instead of the start page (notification tapped before the first load)
+    @ObservationIgnored var store: WatchStore = .shared
+    @ObservationIgnored var requestNotificationAccess: () async -> Bool = NotificationAccess.request
 
     @ObservationIgnored private let startURL: URL
     @ObservationIgnored private var backObservation: NSKeyValueObservation?
+    @ObservationIgnored private var urlObservation: NSKeyValueObservation?
 
     init(url: URL = WebController.initialURL()) {
         startURL = url
@@ -20,7 +24,7 @@ final class WebController: NSObject, WKNavigationDelegate, WKScriptMessageHandle
         config.userContentController.addUserScript(PageRules.userScript())
         webView = WKWebView(frame: .zero, configuration: config)
         super.init()
-        for name in [PageRules.backMessageName, PageRules.settingsMessageName] {
+        for name in [PageRules.backMessageName, PageRules.settingsMessageName, PageRules.watchMessageName] {
             webView.configuration.userContentController.add(WeakMessageHandler(self), name: name)
         }
         webView.navigationDelegate = self
@@ -30,6 +34,9 @@ final class WebController: NSObject, WKNavigationDelegate, WKScriptMessageHandle
         webView.scrollView.refreshControl = refresh
         backObservation = webView.observe(\.canGoBack, options: [.initial, .new]) { [weak self] web, _ in
             MainActor.assumeIsolated { self?.canGoBack = web.canGoBack; self?.syncPageState() }
+        }
+        urlObservation = webView.observe(\.url, options: [.new]) { [weak self] _, _ in   // also fires for the site's client-side page changes
+            MainActor.assumeIsolated { self?.syncPageState() }
         }
     }
 
@@ -45,7 +52,13 @@ final class WebController: NSObject, WKNavigationDelegate, WKScriptMessageHandle
         guard !started else { return }
         started = true
         setDark(dark)
-        webView.load(URLRequest(url: startURL))
+        webView.load(URLRequest(url: launchURL ?? startURL))
+    }
+
+    /// Opens a watched page (from a tapped notification).
+    func open(_ url: URL) {
+        guard Watchable.kind(of: url) != nil else { return }
+        if started { webView.load(URLRequest(url: url)) } else { launchURL = url }
     }
 
     func setDark(_ dark: Bool) {
@@ -65,16 +78,36 @@ final class WebController: NSObject, WKNavigationDelegate, WKScriptMessageHandle
 
     func goBack() { webView.goBack() }
 
+    /// Starts or stops watching the page that is shown (the in-page bell).
+    func toggleWatch() async {
+        guard let url = webView.url, let kind = Watchable.kind(of: url) else { return }
+        let heading = try? await webView.evaluateJavaScript("((document.querySelector('h1') || {}).textContent || document.title || '')") as? String
+        let title = (heading ?? "").split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        let page = WatchedPage(url: Watchable.normalized(url), kind: kind, title: title.isEmpty ? "Seite" : title)
+        let wasWatching = store.isWatching(url)
+        store.toggle(page)
+        if !wasWatching { _ = await requestNotificationAccess() }   // asks the first time only
+        syncPageState()
+    }
+
     /// Tells the page about the state its in-page buttons and the dark theme depend on.
-    private func syncPageState() {
+    func syncPageState() {
+        let watchable = webView.url.map { Watchable.kind(of: $0) != nil } ?? false
+        let watching = webView.url.map { store.isWatching($0) } ?? false
         webView.evaluateJavaScript("""
         document.documentElement.classList.toggle('\(PageRules.canGoBackClass)', \(canGoBack));
         document.documentElement.classList.toggle('\(DarkTheme.className)', \(isDark));
+        document.documentElement.classList.toggle('\(PageRules.watchableClass)', \(watchable));
+        document.documentElement.classList.toggle('\(PageRules.watchingClass)', \(watching));
         """)
     }
 
     func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage) {
-        if message.name == PageRules.settingsMessageName { showSettings = true } else { goBack() }
+        switch message.name {
+        case PageRules.settingsMessageName: showSettings = true
+        case PageRules.watchMessageName: Task { await toggleWatch() }
+        default: goBack()
+        }
     }
 
     @objc private func pulledToRefresh() { reload() }
