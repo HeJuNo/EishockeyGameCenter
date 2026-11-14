@@ -33,4 +33,24 @@ final class LaunchUITests: XCTestCase {
         let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: back)
         wait(for: [gone], timeout: 10)  // back on the start page, the button is hidden again
     }
+
+    /// The settings button opens the menu; the choice is kept.
+    @MainActor func testSettingsMenuKeepsTheAppearanceChoice() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-appearance", "system"]
+        app.launch()
+        let gear = app.buttons["Settings"]
+        XCTAssertTrue(gear.waitForExistence(timeout: 20), "settings button on the start page")
+        gear.tap()
+        let dark = app.buttons["Dark"]
+        XCTAssertTrue(dark.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["System"].isSelected)
+        dark.tap()
+        app.buttons["Done"].tap()
+        let closed = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.buttons["Done"])
+        wait(for: [closed], timeout: 5)
+        gear.tap()
+        XCTAssertTrue(app.buttons["Dark"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Dark"].isSelected, "the choice is still Dark")
+    }
 }

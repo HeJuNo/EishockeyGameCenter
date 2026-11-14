@@ -11,12 +11,12 @@ import WebKit
     private final class BundleAnchor {}
 
     /// Loads a fixture into a web view that carries the app's user script.
-    private func load(_ name: String, backHandler: WKScriptMessageHandler? = nil) async throws -> WKWebView {
+    private func load(_ name: String, dark: Bool = false, handlers: [String: WKScriptMessageHandler] = [:]) async throws -> WKWebView {
         let url = try #require(Bundle(for: BundleAnchor.self).url(forResource: name, withExtension: "html"))
         let html = try String(contentsOf: url, encoding: .utf8)
         let config = WKWebViewConfiguration()
-        config.userContentController.addUserScript(PageRules.userScript())
-        if let backHandler { config.userContentController.add(backHandler, name: PageRules.backMessageName) }
+        config.userContentController.addUserScript(PageRules.userScript(dark: dark))
+        for (name, handler) in handlers { config.userContentController.add(handler, name: name) }
         let webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 390, height: 844), configuration: config)
         let loader = Loader()
         webView.navigationDelegate = loader
@@ -100,9 +100,71 @@ import WebKit
 
     @Test func backButtonTellsTheApp() async throws {
         let recorder = BackRecorder()
-        let web = try await load("game-center-structure", backHandler: recorder)
+        let web = try await load("game-center-structure", handlers: [PageRules.backMessageName: recorder])
         for _ in 0..<40 where try await !hasElement("#egc-back", in: web) { try await Task.sleep(for: .milliseconds(50)) }
         _ = try await web.callAsyncJavaScript("document.getElementById('egc-back').click()", contentWorld: .page)
+        for _ in 0..<20 where recorder.taps == 0 { try await Task.sleep(for: .milliseconds(50)) }
+        #expect(recorder.taps == 1)
+    }
+
+    private func style(_ selector: String, _ property: String, in webView: WKWebView) async throws -> String {
+        let result = try await webView.callAsyncJavaScript(
+            "return getComputedStyle(document.querySelector(sel)).getPropertyValue(prop)", arguments: ["sel": selector, "prop": property], contentWorld: .page)
+        return result as? String ?? ""
+    }
+
+    /// Dark mode: page, cards and headings turn dark/light; white text and icons stay white. Without the class nothing changes.
+    @Test func darkClassRecolorsPageCardsAndText() async throws {
+        let web = try await load("game-center-structure", dark: true)
+        #expect(try await style("body", "background-color", in: web) == "rgb(7, 17, 31)")
+        #expect(try await style("#title", "color", in: web) == "rgb(232, 240, 250)")
+        #expect(try await style("article", "--color-white", in: web) == "#0d1b2f")  // cards (bg-white) follow the dark card color
+        #expect(try await style("#white-text", "--color-white", in: web) == "#fff") // text-white stays white
+    }
+
+    @Test func lightPageIsUntouchedWithoutTheDarkClass() async throws {
+        let web = try await load("game-center-structure")
+        #expect(try await style("#title", "color", in: web) != "rgb(232, 240, 250)")
+        #expect(try await style("article", "--color-white", in: web) == "")
+    }
+
+    @Test func darkClassCanBeSwitchedAtRuntime() async throws {
+        let web = try await load("game-center-structure")
+        _ = try await web.callAsyncJavaScript("document.documentElement.classList.add('egc-dark')", contentWorld: .page)
+        #expect(try await style("body", "background-color", in: web) == "rgb(7, 17, 31)")
+        _ = try await web.callAsyncJavaScript("document.documentElement.classList.remove('egc-dark')", contentWorld: .page)
+        #expect(try await style("body", "background-color", in: web) != "rgb(7, 17, 31)")
+    }
+
+    /// The settings button sits in the tab bar, right of the tabs, always visible.
+    @Test func settingsButtonSitsRightOfTheTabsInTheBar() async throws {
+        let web = try await load("game-center-structure")
+        for _ in 0..<40 where try await !hasElement("#tabs > #egc-gear", in: web) { try await Task.sleep(for: .milliseconds(50)) }
+        #expect(try await hasElement("#tabs > #egc-gear", in: web))
+        #expect(try await isVisible("#egc-gear", in: web))
+        #expect(try await !hasElement("#hero-head #egc-gear", in: web))  // one button only, the bar has it
+        let gear = try await rect("#egc-gear", in: web), tabs = try await rect("#tabs-inner", in: web), bar = try await rect("#tabs", in: web)
+        #expect(gear[0] >= tabs[2])                          // starts where the tabs end
+        #expect(gear[1] >= bar[1] && gear[3] <= bar[3])      // inside the bar
+    }
+
+    /// The start page has no tab bar: the button goes into the top corner of the hero.
+    @Test func startPageGetsSettingsButtonInTheHero() async throws {
+        let web = try await load("game-center-hero-only")
+        for _ in 0..<40 where try await !hasElement("#hero-head > #egc-gear", in: web) { try await Task.sleep(for: .milliseconds(50)) }
+        #expect(try await hasElement("#hero-head > #egc-gear", in: web))
+        #expect(try await isVisible("#egc-gear", in: web))
+        #expect(try await !hasElement("article #egc-gear", in: web))  // not inside a game card
+        let gear = try await rect("#egc-gear", in: web), hero = try await rect("#hero-head", in: web)
+        #expect(gear[2] <= hero[2] && gear[0] > hero[2] - 80)  // near the right edge
+        #expect(gear[1] >= hero[1] && gear[3] <= hero[3])
+    }
+
+    @Test func settingsButtonTellsTheApp() async throws {
+        let recorder = BackRecorder()
+        let web = try await load("game-center-hero-only", handlers: [PageRules.settingsMessageName: recorder])
+        for _ in 0..<40 where try await !hasElement("#egc-gear", in: web) { try await Task.sleep(for: .milliseconds(50)) }
+        _ = try await web.callAsyncJavaScript("document.getElementById('egc-gear').click()", contentWorld: .page)
         for _ in 0..<20 where recorder.taps == 0 { try await Task.sleep(for: .milliseconds(50)) }
         #expect(recorder.taps == 1)
     }

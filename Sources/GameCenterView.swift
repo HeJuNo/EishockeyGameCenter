@@ -3,9 +3,12 @@ import WebKit
 
 struct GameCenterView: View {
     @State private var controller = WebController()
+    @AppStorage(AppearanceSetting.storageKey) private var stored = AppearanceSetting.system.rawValue
+    // With "System" no override is set, so this is the system's appearance.
+    @Environment(\.colorScheme) private var colorScheme
 
-    // The site is light only: its page background is rgb(244, 247, 251).
-    private static let pageBackground = Color(red: 244 / 255, green: 247 / 255, blue: 251 / 255)
+    private var setting: AppearanceSetting { AppearanceSetting(stored: stored) }
+    private var isDark: Bool { setting.isDark(systemIsDark: colorScheme == .dark) }
 
     var body: some View {
         ZStack {
@@ -24,8 +27,14 @@ struct GameCenterView: View {
                 ProgressView().controlSize(.large)
             }
         }
-        .background(Self.pageBackground.ignoresSafeArea())
-        .preferredColorScheme(.light)
+        // The status area shows the page color, so it matches the site in both modes.
+        .background(Color(isDark ? DarkTheme.pageBackground : DarkTheme.lightPageBackground).ignoresSafeArea())
+        .preferredColorScheme(setting.colorScheme)
+        .onAppear { controller.start(dark: isDark) }
+        .onChange(of: isDark) { _, dark in controller.setDark(dark) }
+        .sheet(isPresented: $controller.showSettings) {
+            SettingsView(stored: $stored).presentationDetents([.medium])
+        }
     }
 }
 
