@@ -84,5 +84,6 @@ final class LaunchUITests: XCTestCase {
             XCTAssertTrue(app.switches[title].waitForExistence(timeout: 5), title)
         }
         XCTAssertTrue(app.buttons["Check now"].exists)
+        XCTAssertTrue(app.switches["Load all list entries"].exists)
     }
 }

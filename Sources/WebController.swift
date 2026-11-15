@@ -8,6 +8,7 @@ final class WebController: NSObject, WKNavigationDelegate, WKScriptMessageHandle
     private(set) var state: LoadState = .loading
     private(set) var canGoBack = false
     private(set) var isDark = false
+    private(set) var loadAll = true   // "load all list entries" (the setting)
     var showSettings = false  // the settings sheet, opened by the in-page settings button
     @ObservationIgnored private var started = false
     @ObservationIgnored private var launchURL: URL?    // a page to open instead of the start page (notification tapped before the first load)
@@ -48,9 +49,10 @@ final class WebController: NSObject, WKNavigationDelegate, WKScriptMessageHandle
     }
 
     /// Starts the first load, once the app knows whether the page must be dark (so it never flashes light).
-    func start(dark: Bool) {
+    func start(dark: Bool, loadAll: Bool = true) {
         guard !started else { return }
         started = true
+        self.loadAll = loadAll
         setDark(dark)
         webView.load(URLRequest(url: launchURL ?? startURL))
     }
@@ -65,8 +67,16 @@ final class WebController: NSObject, WKNavigationDelegate, WKScriptMessageHandle
         isDark = dark
         let controller = webView.configuration.userContentController
         controller.removeAllUserScripts()
-        controller.addUserScript(PageRules.userScript(dark: dark))  // later page loads start in the right mode
+        controller.addUserScript(PageRules.userScript(dark: dark, loadAll: loadAll))  // later page loads start in the right mode
         webView.underPageBackgroundColor = dark ? DarkTheme.pageBackground : DarkTheme.lightPageBackground
+        syncPageState()
+    }
+
+    func setLoadAll(_ on: Bool) {
+        loadAll = on
+        let controller = webView.configuration.userContentController
+        controller.removeAllUserScripts()
+        controller.addUserScript(PageRules.userScript(dark: isDark, loadAll: on))
         syncPageState()
     }
 
@@ -96,7 +106,8 @@ final class WebController: NSObject, WKNavigationDelegate, WKScriptMessageHandle
         let watching = webView.url.map { store.isWatching($0) } ?? false
         webView.evaluateJavaScript("""
         window.__egcSet && window.__egcSet({ '\(PageRules.canGoBackClass)': \(canGoBack), '\(DarkTheme.className)': \(isDark),
-          '\(PageRules.watchableClass)': \(watchable), '\(PageRules.watchingClass)': \(watching) });
+          '\(PageRules.watchableClass)': \(watchable), '\(PageRules.watchingClass)': \(watching),
+          '\(PageRules.loadAllClass)': \(loadAll) });
         """)
     }
 

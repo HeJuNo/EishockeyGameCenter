@@ -3,6 +3,7 @@ import UIKit
 
 struct SettingsView: View {
     @Binding var stored: String
+    @Binding var loadAll: Bool
     @Environment(\.dismiss) private var dismiss
     @State private var store = WatchStore.shared
     @State private var checking = false
@@ -18,6 +19,13 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.inline)
                     .labelsHidden()
+                }
+                Section {
+                    Toggle("Load all list entries", isOn: $loadAll)
+                } header: {
+                    Text("Lists")
+                } footer: {
+                    Text("Player, penalty and schedule lists show everything instead of a \"load more\" button. Long lists need more data and take longer to open.")
                 }
                 watchedSection
                 categorySection

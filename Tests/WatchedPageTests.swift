@@ -21,6 +21,12 @@ import Testing
         for u in urls { #expect(Watchable.kind(of: url(u)) == nil, Comment(rawValue: u)) }
     }
 
+    /// The penalty list is the player page with `wertung=strafen`: that choice must stay part of the page's identity; list sizes must not.
+    @Test func normalizationKeepsTheListChoiceButNotTheListSize() {
+        let u = url("https://www.eishockey.at/game-center/ice/topscorer?saison=2026&wertung=strafen&runde=0&eintraege=100&spiele=60&utm=1")
+        #expect(Watchable.normalized(u) == url("https://www.eishockey.at/game-center/ice/topscorer?saison=2026&wertung=strafen&runde=0"))
+    }
+
     @Test func normalizationMakesOneEntry() {
         #expect(Watchable.normalized(url("https://eishockey.at/game-center/ice/tabelle/?utm=1#x")) == url("https://www.eishockey.at/game-center/ice/tabelle"))
         #expect(Watchable.normalized(url("https://www.eishockey.at/game-center/ice/tabelle?saison=2026&utm=1")) == url("https://www.eishockey.at/game-center/ice/tabelle?saison=2026"))

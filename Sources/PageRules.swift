@@ -20,6 +20,10 @@ enum PageRules {
     /// The app toggles these classes on <html>: the shown page can be watched / is watched.
     static let watchableClass = "egc-watchable"
     static let watchingClass = "egc-watching"
+    /// The app sets this class on <html> while "load all list entries" is on.
+    static let loadAllClass = "egc-load-all"
+    /// The "load more" links raise one of these address parameters; the script sets it to this value so everything comes at once.
+    static let allEntriesCount = 10000
     /// The app toggles this class on <html> while the web view can go back.
     static let canGoBackClass = "egc-can-go-back"
 
@@ -39,7 +43,7 @@ enum PageRules {
     #egc-gear.egc-hero { position: absolute; top: 8px; right: 8px; z-index: 2; margin: 0; color: #fff; }
     """
 
-    static func userScript(dark: Bool = false) -> WKUserScript {
+    static func userScript(dark: Bool = false, loadAll: Bool = false) -> WKUserScript {
         // The style is appended to <html>, so it survives the site's client-side page changes.
         // The site sticks its league tabs (and the table header below them) at an offset made for the
         // header we hide; shift every such offset up by the smallest one, so the tabs stick at the top.
@@ -50,9 +54,28 @@ enum PageRules {
           // wants are therefore kept here and put back whenever the page changes the attribute.
           var wanted = {};
           function applyClasses() { var l = document.documentElement.classList; for (var k in wanted) l.toggle(k, wanted[k]); }
-          window.__egcSet = function (state) { for (var k in state) wanted[k] = !!state[k]; applyClasses(); };
+          window.__egcSet = function (state) { for (var k in state) wanted[k] = !!state[k]; applyClasses(); expandIfNeeded(); };
+          // Long lists end with a link "Weitere Einträge/Spiele laden" that raises eintraege= or spiele= in the address.
+          // With the option on, one jump to a huge value makes the server return everything at once.
+          var expanding = false;
+          function expandIfNeeded() {
+            if (expanding || !document.documentElement.classList.contains('\(loadAllClass)')) return;
+            var links = document.querySelectorAll('a[href*="eintraege="], a[href*="spiele="]');
+            for (var i = 0; i < links.length; i++) {
+              var a = links[i];
+              if (!/weitere.*laden/i.test(a.textContent)) continue;
+              var u; try { u = new URL(a.href, location.href); } catch (e) { continue; }
+              var name = u.searchParams.has('eintraege') ? 'eintraege' : 'spiele';
+              if (parseInt(u.searchParams.get(name), 10) >= \(allEntriesCount)) continue;   // already everything (or capped): no loop
+              u.searchParams.set(name, '\(allEntriesCount)');
+              expanding = true;
+              location.replace(u.href);
+              return;
+            }
+          }
           new MutationObserver(applyClasses).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
           if (\(dark)) window.__egcSet({ '\(DarkTheme.className)': true });
+          if (\(loadAll)) window.__egcSet({ '\(loadAllClass)': true });
           var style = document.createElement('style');
           style.id = 'egc-hide';
           style.textContent = \(jsStringLiteral(hideCSS + "\n" + barCSS + "\n" + DarkTheme.css));
@@ -117,7 +140,7 @@ enum PageRules {
               if (hero) addGear(hero, true);
             }
           }
-          function schedule() { if (!queued) { queued = true; setTimeout(shift, 30); } }
+          function schedule() { if (!queued) { queued = true; setTimeout(function () { shift(); expandIfNeeded(); }, 30); } }
           new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true });
           document.addEventListener('DOMContentLoaded', schedule);
         })();

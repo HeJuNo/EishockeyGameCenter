@@ -31,13 +31,14 @@ enum Watchable {
         }
     }
 
-    /// One spelling per page: https, www host, no trailing slash, only the `saison` query item, no fragment.
+    /// One spelling per page: https, www host, no trailing slash, only the saison, runde and wertung query items, no fragment.
     static func normalized(_ url: URL) -> URL {
         guard var c = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
         c.scheme = "https"; c.host = "www.eishockey.at"; c.fragment = nil
         while c.path.count > 1, c.path.hasSuffix("/") { c.path.removeLast() }
-        let saison = c.queryItems?.first { $0.name == "saison" }
-        c.queryItems = saison.map { [$0] }
+        // saison, runde and wertung (e.g. wertung=strafen for the penalty list) make up the page; list sizes and tracking do not.
+        let kept = (c.queryItems ?? []).filter { ["saison", "runde", "wertung"].contains($0.name) }
+        c.queryItems = kept.isEmpty ? nil : kept
         return c.url ?? url
     }
 }

@@ -4,6 +4,7 @@ import WebKit
 struct GameCenterView: View {
     @State private var controller = WebController()
     @AppStorage(AppearanceSetting.storageKey) private var stored = AppearanceSetting.system.rawValue
+    @AppStorage("loadAllEntries") private var loadAllEntries = true
     // With "System" no override is set, so this is the system's appearance.
     @Environment(\.colorScheme) private var colorScheme
 
@@ -32,12 +33,13 @@ struct GameCenterView: View {
         .preferredColorScheme(setting.colorScheme)
         .onAppear {
             NotificationRouter.shared.onOpen = { controller.open($0) }
-            controller.start(dark: isDark)
+            controller.start(dark: isDark, loadAll: loadAllEntries)
         }
         .onChange(of: WatchStore.shared.pages) { _, _ in controller.syncPageState() }   // e.g. a page was stopped in the settings
         .onChange(of: isDark) { _, dark in controller.setDark(dark) }
+        .onChange(of: loadAllEntries) { _, on in controller.setLoadAll(on) }
         .sheet(isPresented: $controller.showSettings) {
-            SettingsView(stored: $stored).presentationDetents([.large])
+            SettingsView(stored: $stored, loadAll: $loadAllEntries).presentationDetents([.large])
         }
     }
 }
