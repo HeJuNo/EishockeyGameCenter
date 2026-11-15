@@ -31,15 +31,22 @@ struct DiffLine: Codable, Equatable {
 enum ChangeDetector {
     static let maxLines = 100
 
+    /// Both states know their text blocks: the page changed when the listed lines say so (a clock text alone never does).
+    /// Older states without blocks fall back to the hash.
+    private static func textChanged(_ old: PageSnapshot, _ new: PageSnapshot, _ lines: [DiffLine]) -> Bool {
+        old.blocks != nil && new.blocks != nil ? !lines.isEmpty : old.textHash != new.textHash
+    }
+
     /// Exactly what changed: per table row the cells that differ ("Team: Pkt 41 → 43"), rows that are new or gone,
     /// and the other text of the page that is new or gone. Order-free: moved blocks are not a change.
     static func details(old: PageSnapshot, new: PageSnapshot) -> [DiffLine] {
         var out: [DiffLine] = []
         if let a = old.tables, let b = new.tables { out += tableDiff(a, b) }
         let rowTexts = Set(((old.tables ?? []) + (new.tables ?? [])).flatMap { $0.rows.map { $0.joined(separator: " ") } })
-        let otherOld = old.blocks.map { $0.filter { !rowTexts.contains($0) } }, otherNew = new.blocks.map { $0.filter { !rowTexts.contains($0) } }
+        let otherOld = old.blocks.map { $0.filter { !rowTexts.contains($0) && !PageParser.isClockText($0) } }, otherNew = new.blocks.map { $0.filter { !rowTexts.contains($0) && !PageParser.isClockText($0) } }
         // A table whose rows were not parsed (states from before tables were kept) falls back to whole blocks.
-        out += diff(old: (old.tables == nil || new.tables == nil) ? old.blocks : otherOld, new: (old.tables == nil || new.tables == nil) ? new.blocks : otherNew)
+        let wholeBlocks = old.tables == nil || new.tables == nil
+        out += diff(old: wholeBlocks ? old.blocks?.filter { !PageParser.isClockText($0) } : otherOld, new: wholeBlocks ? new.blocks?.filter { !PageParser.isClockText($0) } : otherNew)
         return Array(out.prefix(maxLines))
     }
 
@@ -107,7 +114,7 @@ enum ChangeDetector {
         func change(_ kind: ChangeKind, _ body: String, lines: [DiffLine] = []) -> Change { Change(page: page, kind: kind, title: page.title, body: body, lines: lines) }
 
         guard new.kind == .game else {
-            guard old.textHash != new.textHash else { return [] }
+            guard textChanged(old, new, textLines) else { return [] }
             let body: String
             switch new.kind {
             case .table: body = "Tabelle aktualisiert"
@@ -136,7 +143,7 @@ enum ChangeDetector {
         }
         if !before.hasLineup && now.hasLineup { out.append(change(.lineup, "Aufstellung veröffentlicht", lines: textLines)) }
         // While a game runs its text changes constantly: only after the game does a text change count.
-        if out.isEmpty, !now.live, now.score != nil, old.textHash != new.textHash { out.append(change(.updated, "Statistik aktualisiert", lines: textLines)) }
+        if out.isEmpty, !now.live, now.score != nil, textChanged(old, new, textLines) { out.append(change(.updated, "Statistik aktualisiert", lines: textLines)) }
         return out
     }
 

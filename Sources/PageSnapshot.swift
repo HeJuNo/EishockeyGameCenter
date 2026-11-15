@@ -61,7 +61,7 @@ enum PageParser {
         let rest = stripped.replacingOccurrences(of: rowPattern, with: "<x>", options: .regularExpression)
         let nodes = try! NSRegularExpression(pattern: #">([^<]+)<"#)
         for m in nodes.matches(in: rest, range: NSRange(rest.startIndex..., in: rest)) {
-            if let range = Range(m.range(at: 1), in: rest) { let t = collapse(decodeEntities(String(rest[range]))); if !t.isEmpty { out.append(t) } }
+            if let range = Range(m.range(at: 1), in: rest) { let t = collapse(decodeEntities(String(rest[range]))); if !t.isEmpty, !isClockText(t) { out.append(t) } }
         }
         return out
     }
@@ -82,6 +82,11 @@ enum PageParser {
             }
             return data.rows.isEmpty ? nil : data
         }
+    }
+
+    /// Text that changes by itself with the time ("Zuletzt aktualisiert vor 2 Minuten"): never a change of the page.
+    static func isClockText(_ block: String) -> Bool {
+        block.count < 80 && block.range(of: #"(?i)^(zuletzt )?aktualisiert\b|\bvor (\d+|einer|einem) (sekunde|minute|stunde|tag)|^(gerade eben|soeben)$"#, options: .regularExpression) != nil
     }
 
     static func visibleText(_ html: String) -> String {

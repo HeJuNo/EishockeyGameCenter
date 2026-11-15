@@ -163,3 +163,23 @@ private extension PageSnapshot {
         #expect(PageParser.tables(html) == [TableData(headers: ["#", "Team"], rows: [["1", "EC KAC"]])])
     }
 }
+
+@MainActor @Suite struct ClockTextTests {
+    private let page = WatchedPage(url: URL(string: "https://www.eishockey.at/game-center/u14/topscorer")!, kind: .topscorers, title: "U14")
+    private func snap(_ blocks: [String], hash: String) -> PageSnapshot { PageSnapshot(kind: .topscorers, title: "U14", textHash: hash, game: nil, tables: [], blocks: blocks) }
+
+    @Test func clockTextIsRecognised() {
+        for t in ["Zuletzt aktualisiert vor 2 Minuten", "Zuletzt aktualisiert vor einer Stunde", "vor 45 Sekunden", "gerade eben"] { #expect(PageParser.isClockText(t), Comment(rawValue: t)) }
+        for t in ["Aktualisierung fehlgeschlagen.", "Spieler", "1 Max Muster 12 5"] { #expect(!PageParser.isClockText(t), Comment(rawValue: t)) }
+    }
+
+    @Test func onlyTheClockChangingIsNoChange() {
+        let a = snap(["Spieler", "Zuletzt aktualisiert vor 2 Minuten"], hash: "a"), b = snap(["Spieler", "Zuletzt aktualisiert vor 4 Minuten"], hash: "b")
+        #expect(ChangeDetector.changes(page: page, old: a, new: b).isEmpty)
+    }
+
+    @Test func realChangeNextToTheClockIsListedWithoutTheClock() {
+        let a = snap(["Spieler", "Zuletzt aktualisiert vor 2 Minuten"], hash: "a"), b = snap(["Spieler", "Neuer Text", "Zuletzt aktualisiert vor 4 Minuten"], hash: "b")
+        #expect(ChangeDetector.changes(page: page, old: a, new: b).first?.lines == [DiffLine(side: .added, text: "Neuer Text")])
+    }
+}
