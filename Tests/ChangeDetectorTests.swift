@@ -81,3 +81,43 @@ import Testing
         #expect(category(.updated) == .statistics)
     }
 }
+
+@MainActor @Suite struct ChangeDiffTests {
+    private let page = WatchedPage(url: URL(string: "https://www.eishockey.at/game-center/ice/tabelle")!, kind: .table, title: "Tabelle")
+    private func table(_ blocks: [String], hash: String) -> PageSnapshot { PageSnapshot(kind: .table, title: "Tabelle", textHash: hash, game: nil, blocks: blocks) }
+
+    @Test func changedRowShowsOldAndNew() {
+        let c = ChangeDetector.changes(page: page, old: table(["1 A 10", "2 B 8"], hash: "a"), new: table(["1 A 12", "2 B 8"], hash: "b"))
+        #expect(c.first?.lines == [DiffLine(side: .removed, text: "1 A 10"), DiffLine(side: .added, text: "1 A 12")])
+    }
+
+    @Test func movedBlocksAreNotAChange() {
+        #expect(ChangeDetector.diff(old: ["a", "b"], new: ["b", "a"]).isEmpty)
+        #expect(ChangeDetector.diff(old: ["a", "a"], new: ["a"]) == [DiffLine(side: .removed, text: "a")])
+    }
+
+    @Test func statesWithoutBlocksStillNotify() {
+        let c = ChangeDetector.changes(page: page, old: table([], hash: "a").withoutBlocks(), new: table(["x"], hash: "b"))
+        #expect(c.count == 1 && c[0].lines.isEmpty)
+    }
+
+    @Test func scoreChangeShowsScoreLines() {
+        func game(_ s: String) -> PageSnapshot { PageSnapshot(kind: .game, title: "G", textHash: "h", game: GameInfo(score: s, live: true, hasLineup: true)) }
+        let c = ChangeDetector.changes(page: page, old: game("1:0"), new: game("2:0"))
+        #expect(c.first?.lines == [DiffLine(side: .removed, text: "Stand 1:0"), DiffLine(side: .added, text: "Stand 2:0")])
+    }
+
+    @Test func historyIsKeptNewestFirstAndSurvivesReload() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let store = WatchStore(directory: dir)
+        store.record([Change(page: page, kind: .updated, title: "Tabelle", body: "Tabelle aktualisiert", lines: [DiffLine(side: .added, text: "x")])], at: Date(timeIntervalSince1970: 1))
+        store.record([Change(page: page, kind: .updated, title: "Tabelle", body: "zweite", lines: [])], at: Date(timeIntervalSince1970: 2))
+        let again = WatchStore(directory: dir)
+        #expect(again.history.map(\.summary) == ["zweite", "Tabelle aktualisiert"])
+        #expect(again.history[1].lines.count == 1)
+    }
+}
+
+private extension PageSnapshot {
+    func withoutBlocks() -> PageSnapshot { var s = self; s.blocks = nil; return s }
+}

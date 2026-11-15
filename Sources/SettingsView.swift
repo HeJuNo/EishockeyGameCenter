@@ -29,6 +29,7 @@ struct SettingsView: View {
                     Text("Player, penalty and schedule lists show everything instead of a \"load more\" button. Long lists need more data and take longer to open.")
                 }
                 watchedSection
+                Section { NavigationLink("Changes (\(store.history.count))") { ChangesView() } }
                 categorySection
                 checkSection
             }

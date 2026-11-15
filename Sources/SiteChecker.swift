@@ -32,6 +32,7 @@ struct SiteChecker {
             store.setSnapshot(snapshot, for: page)   // also when the category is switched off, so switching it on does not replay
         }
         let wanted = all.filter { store.enabledCategories.contains($0.category) }
+        store.record(wanted, at: now)
         if !wanted.isEmpty { await notifier.post(wanted) }
         store.markChecked(now)
         return wanted

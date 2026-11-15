@@ -85,7 +85,8 @@ final class LaunchUITests: XCTestCase {
         for title in ["Scores and game start/end", "Lineups", "Statistics and tables"] {
             XCTAssertTrue(app.switches[title].waitForExistence(timeout: 5), title)
         }
-        XCTAssertTrue(app.buttons["Check now"].exists)
+        app.swipeUp()   // the lists below the fold
+        XCTAssertTrue(app.buttons["Check now"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.switches["Load all list entries"].exists)
     }
 }

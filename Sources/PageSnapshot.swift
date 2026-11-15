@@ -12,6 +12,7 @@ struct PageSnapshot: Codable, Equatable {
     var title: String        // the page's <h1>, falling back to <title>
     var textHash: String     // hex SHA-256 of the whole visible text
     var game: GameInfo?      // only for kind == .game
+    var blocks: [String]? = nil   // the page text in blocks, to show exactly what changed (nil in states saved before this existed)
 }
 
 /// Reads a page of eishockey.at into a snapshot. Layout facts: docs/notes/monitoring-page-data.md.
@@ -25,7 +26,8 @@ enum PageParser {
         let text = visibleText(html)
         guard text.count >= minimumTextLength else { return nil }
         let heading = firstGroup(#"(?is)<h1[^>]*>(.*?)</h1>"#, in: html).map { plain($0) }.flatMap { $0.isEmpty ? nil : $0 }
-        let hash = SHA256.hash(data: Data(blocks(html).sorted().joined(separator: "\u{1F}").utf8)).map { String(format: "%02x", $0) }.joined()
+        let pageBlocks = blocks(html)
+        let hash = SHA256.hash(data: Data(pageBlocks.sorted().joined(separator: "\u{1F}").utf8)).map { String(format: "%02x", $0) }.joined()
         var game: GameInfo?
         if kind == .game {
             let beforeBar = pageTitle.split(separator: "|", maxSplits: 1).first.map(String.init) ?? pageTitle
@@ -33,7 +35,7 @@ enum PageParser {
             let live = html.contains(#"\"live\":true"#) || html.contains(#""live":true"#)
             game = GameInfo(score: score, live: live, hasLineup: hasHeading("Aufstellung", in: html))
         }
-        return PageSnapshot(kind: kind, title: heading ?? pageTitle, textHash: hash, game: game)
+        return PageSnapshot(kind: kind, title: heading ?? pageTitle, textHash: hash, game: game, blocks: pageBlocks)
     }
 
     // MARK: text
