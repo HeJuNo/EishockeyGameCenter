@@ -37,6 +37,12 @@ import Testing
         #expect(!s.textHash.isEmpty)
     }
 
+    @Test func teamStatsPage() throws {
+        let s = try #require(PageParser.snapshot(html: try fixture("team-stats"), kind: .teamStats))
+        #expect(s.title.contains("Team-Statistik") || s.title.contains("ICE"))
+        #expect((s.blocks ?? []).count > 20)
+    }
+
     @Test func hashIgnoresScriptsAndMarkup() throws {
         let a = try #require(PageParser.snapshot(html: document(text: "Platz 1 Salzburg", script: "var a = 1;"), kind: .table))
         let b = try #require(PageParser.snapshot(html: document(text: "Platz 1 Salzburg", script: "console.log('other')", attrs: "class=\"x\" data-v=\"2\""), kind: .table))

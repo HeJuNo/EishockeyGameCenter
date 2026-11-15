@@ -1,6 +1,6 @@
 import Foundation
 
-enum PageKind: String, Codable, CaseIterable { case game, team, table, goalies, topscorers }
+enum PageKind: String, Codable, CaseIterable { case game, team, table, goalies, topscorers, teamStats }
 
 /// A page the user asked the app to watch.
 struct WatchedPage: Codable, Hashable, Identifiable {
@@ -27,6 +27,7 @@ enum Watchable {
         case "tabelle": return .table
         case "torhueter": return .goalies
         case "topscorer": return .topscorers
+        case "teams": return .teamStats   // the "Team-Statistik" page
         default: return nil
         }
     }

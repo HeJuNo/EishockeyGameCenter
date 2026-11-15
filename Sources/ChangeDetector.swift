@@ -56,6 +56,7 @@ enum ChangeDetector {
             case .table: body = "Tabelle aktualisiert"
             case .goalies: body = "Torhüter-Statistik aktualisiert"
             case .topscorers: body = "Topscorer aktualisiert"
+            case .teamStats: body = "Team-Statistik aktualisiert"
             default: body = "Team-Seite aktualisiert"
             }
             return [change(.updated, body, lines: textLines)]

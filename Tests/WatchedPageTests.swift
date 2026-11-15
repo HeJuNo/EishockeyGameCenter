@@ -11,11 +11,12 @@ import Testing
         #expect(Watchable.kind(of: url("https://www.eishockey.at/game-center/ice/tabelle")) == .table)
         #expect(Watchable.kind(of: url("https://www.eishockey.at/game-center/alps/torhueter?saison=21947")) == .goalies)
         #expect(Watchable.kind(of: url("https://www.eishockey.at/game-center/u14/topscorer")) == .topscorers)
+        #expect(Watchable.kind(of: url("https://www.eishockey.at/game-center/ice/teams?saison=2026")) == .teamStats)
         #expect(Watchable.kind(of: url("https://eishockey.at/game-center/ice/tabelle")) == .table)
     }
 
     @Test func notWatchable() {
-        let urls = ["https://www.eishockey.at/game-center", "https://www.eishockey.at/game-center/ice", "https://www.eishockey.at/game-center/ice/teams",
+        let urls = ["https://www.eishockey.at/game-center", "https://www.eishockey.at/game-center/ice",
                     "https://www.eishockey.at/game-center/ice/spiel/", "http://www.eishockey.at/game-center/ice/tabelle",
                     "https://eishockey.at.example.com/game-center/ice/tabelle", "https://www.eishockey.at@evil.example/game-center/ice/tabelle"]
         for u in urls { #expect(Watchable.kind(of: url(u)) == nil, Comment(rawValue: u)) }

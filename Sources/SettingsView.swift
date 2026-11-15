@@ -129,6 +129,7 @@ struct SettingsView: View {
         case .table: "Table"
         case .goalies: "Goalies"
         case .topscorers: "Top scorers"
+        case .teamStats: "Team statistics"
         }
     }
     private static func label(_ category: NotificationCategory) -> String {
