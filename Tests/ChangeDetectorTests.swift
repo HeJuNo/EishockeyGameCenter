@@ -121,3 +121,45 @@ import Testing
 private extension PageSnapshot {
     func withoutBlocks() -> PageSnapshot { var s = self; s.blocks = nil; return s }
 }
+
+@MainActor @Suite struct TableDetailTests {
+    private let page = WatchedPage(url: URL(string: "https://www.eishockey.at/game-center/ice/tabelle")!, kind: .table, title: "Tabelle")
+    private func snap(_ rows: [[String]], headers: [String] = ["#", "Team", "Sp", "Pkt"], hash: String) -> PageSnapshot {
+        PageSnapshot(kind: .table, title: "Tabelle", textHash: hash, game: nil, tables: [TableData(headers: headers, rows: rows)], blocks: rows.map { $0.joined(separator: " ") } + ["Stand: Montag"])
+    }
+    private func lines(_ a: PageSnapshot, _ b: PageSnapshot) -> [DiffLine] { ChangeDetector.changes(page: page, old: a, new: b).first?.lines ?? [] }
+
+    @Test func changedCellsAreNamedByColumn() {
+        let l = lines(snap([["1", "Salzburg", "10", "20"], ["2", "Linz", "10", "18"]], hash: "a"),
+                      snap([["1", "Salzburg", "11", "23"], ["2", "Linz", "10", "18"]], hash: "b"))
+        #expect(l == [DiffLine(side: .changed, text: "Salzburg: Sp 10 → 11, Pkt 20 → 23")])
+    }
+
+    @Test func rankChangeIsShownAsRankAndMovedRowsAreNotAChange() {
+        let l = lines(snap([["1", "Salzburg", "10", "20"], ["2", "Linz", "10", "18"]], hash: "a"),
+                      snap([["1", "Linz", "11", "21"], ["2", "Salzburg", "10", "20"]], hash: "b"))
+        #expect(l.contains(DiffLine(side: .changed, text: "Linz: # 2 → 1, Sp 10 → 11, Pkt 18 → 21")))
+        #expect(l.contains(DiffLine(side: .changed, text: "Salzburg: # 1 → 2")))
+        #expect(l.count == 2)
+    }
+
+    @Test func newAndGoneRowsAndOtherTextAreListed() {
+        let a = snap([["1", "Salzburg", "10", "20"]], hash: "a")
+        var b = snap([["1", "Linz", "1", "3"]], hash: "b"); b.blocks = (b.blocks ?? []) + ["Neuer Hinweis"]
+        let l = lines(a, b)
+        #expect(l.contains(DiffLine(side: .removed, text: "Salzburg: # 1, Sp 10, Pkt 20")))
+        #expect(l.contains(DiffLine(side: .added, text: "Linz: # 1, Sp 1, Pkt 3")))
+        #expect(l.contains(DiffLine(side: .added, text: "Neuer Hinweis")))
+    }
+
+    @Test func notificationNamesTheFirstChange() {
+        let c = ChangeDetector.changes(page: page, old: snap([["1", "Salzburg", "10", "20"], ["2", "Linz", "10", "18"]], hash: "a"),
+                                       new: snap([["1", "Salzburg", "11", "23"], ["2", "Linz", "11", "19"]], hash: "b"))
+        #expect(c.first?.body == "Tabelle aktualisiert – Salzburg: Sp 10 → 11, Pkt 20 → 23 (+1 weitere)")
+    }
+
+    @Test func parserReadsHeadersAndCells() throws {
+        let html = "<table><tr><th>#</th><th><button><span>Team</span></button></th></tr><tr><td>1</td><td>EC&nbsp;KAC</td></tr></table>"
+        #expect(PageParser.tables(html) == [TableData(headers: ["#", "Team"], rows: [["1", "EC KAC"]])])
+    }
+}

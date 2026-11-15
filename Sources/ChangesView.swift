@@ -13,11 +13,11 @@ struct ChangesView: View {
                 Section {
                     ForEach(Array(record.lines.enumerated()), id: \.offset) { _, line in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(line.side == .added ? "+" : "−").bold()
+                            Text(line.side == .added ? "+" : line.side == .removed ? "−" : "~").bold()
                             Text(line.text)
                         }
                         .font(.callout)
-                        .foregroundStyle(line.side == .added ? Color.green : Color.red)
+                        .foregroundStyle(line.side == .added ? Color.green : line.side == .removed ? Color.red : Color.orange)
                     }
                     if record.lines.isEmpty { Text("No details available.").foregroundStyle(.secondary) }
                 } header: {

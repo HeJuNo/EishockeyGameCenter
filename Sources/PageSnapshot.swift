@@ -7,11 +7,18 @@ struct GameInfo: Codable, Equatable {
     var hasLineup: Bool
 }
 
+/// One table of the page: its column titles and the cells of every data row.
+struct TableData: Codable, Equatable {
+    var headers: [String]
+    var rows: [[String]]
+}
+
 struct PageSnapshot: Codable, Equatable {
     var kind: PageKind
     var title: String        // the page's <h1>, falling back to <title>
     var textHash: String     // hex SHA-256 of the whole visible text
     var game: GameInfo?      // only for kind == .game
+    var tables: [TableData]? = nil   // the page tables cell by cell (nil in states saved before this existed)
     var blocks: [String]? = nil   // the page text in blocks, to show exactly what changed (nil in states saved before this existed)
 }
 
@@ -35,7 +42,7 @@ enum PageParser {
             let live = html.contains(#"\"live\":true"#) || html.contains(#""live":true"#)
             game = GameInfo(score: score, live: live, hasLineup: hasHeading("Aufstellung", in: html))
         }
-        return PageSnapshot(kind: kind, title: heading ?? pageTitle, textHash: hash, game: game, blocks: pageBlocks)
+        return PageSnapshot(kind: kind, title: heading ?? pageTitle, textHash: hash, game: game, tables: tables(html), blocks: pageBlocks)
     }
 
     // MARK: text
@@ -57,6 +64,24 @@ enum PageParser {
             if let range = Range(m.range(at: 1), in: rest) { let t = collapse(decodeEntities(String(rest[range]))); if !t.isEmpty { out.append(t) } }
         }
         return out
+    }
+
+    /// Every <table> with its column titles (the <th> row) and the cells of its data rows.
+    static func tables(_ html: String) -> [TableData] {
+        let stripped = html.replacingOccurrences(of: #"(?is)<script.*?</script>|<style.*?</style>|<!--.*?-->"#, with: " ", options: .regularExpression)
+        func matches(_ pattern: String, in s: String) -> [String] {
+            try! NSRegularExpression(pattern: pattern).matches(in: s, range: NSRange(s.startIndex..., in: s)).compactMap { Range($0.range, in: s).map { String(s[$0]) } }
+        }
+        return matches(#"(?is)<table[^>]*>.*?</table>"#, in: stripped).compactMap { table in
+            var data = TableData(headers: [], rows: [])
+            for row in matches(#"(?is)<tr[^>]*>.*?</tr>"#, in: table) {
+                let cells = matches(#"(?is)<t[dh][^>]*>.*?</t[dh]>"#, in: row)
+                let texts = cells.map { plain($0) }
+                guard texts.contains(where: { !$0.isEmpty }) else { continue }
+                if cells.allSatisfy({ $0.lowercased().hasPrefix("<th") }) { if data.headers.isEmpty { data.headers = texts } } else { data.rows.append(texts) }
+            }
+            return data.rows.isEmpty ? nil : data
+        }
     }
 
     static func visibleText(_ html: String) -> String {
