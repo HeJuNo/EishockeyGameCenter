@@ -3,11 +3,11 @@ name: EishockeyGameCenter
 options:
   createIntermediateGroups: true
   deploymentTarget:
-    iOS: "27.0"
+    iOS: "26.0"
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    IPHONEOS_DEPLOYMENT_TARGET: "27.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
     VERSIONING_SYSTEM: apple-generic
@@ -15,7 +15,7 @@ targets:
   EishockeyGameCenter:
     type: application
     platform: iOS
-    deploymentTarget: "27.0"
+    deploymentTarget: "26.0"
     sources:
       - Sources
       - Resources
@@ -47,7 +47,7 @@ targets:
   EishockeyGameCenterTests:
     type: bundle.unit-test
     platform: iOS
-    deploymentTarget: "27.0"
+    deploymentTarget: "26.0"
     sources:
       - Tests
     dependencies:
@@ -60,7 +60,7 @@ targets:
   EishockeyGameCenterUITests:
     type: bundle.ui-testing
     platform: iOS
-    deploymentTarget: "27.0"
+    deploymentTarget: "26.0"
     sources:
       - UITests
     dependencies:
