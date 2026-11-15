@@ -20,6 +20,10 @@ import Testing
         let url = Bundle(for: BundleAnchor.self).url(forResource: name, withExtension: "html")!
         return try! String(contentsOf: url, encoding: .utf8)
     }
+    @MainActor private final class FetchCounter {
+        var count = 0
+        func hit() { count += 1 }
+    }
     private let tableURL = URL(string: "https://www.eishockey.at/game-center/ice/tabelle")!
     private let gameURL = URL(string: "https://www.eishockey.at/game-center/ice/spiel/icehl-8287")!
     private func page(_ url: URL, _ kind: PageKind) -> WatchedPage { WatchedPage(url: url, kind: kind, title: "Seite") }
@@ -110,6 +114,23 @@ import Testing
         #expect(recorded == PageParser.snapshot(html: changed, kind: .table)?.textHash)
         store.setCategory(.statistics, enabled: true)
         #expect(await checker.run(store: store).isEmpty)           // the old change is not replayed
+    }
+
+    /// The automatic check, "Check now" and the background task can start at the same moment: only one run may work on the store.
+    @Test func overlappingRunsAreOneRun() async {
+        let store = WatchStore(directory: FileManager.default.temporaryDirectory.appendingPathComponent("overlap-\(UUID().uuidString)"))
+        store.toggle(page(tableURL, .table))
+        let recorder = Recorder()
+        let counter = FetchCounter()
+        let html = fixture("table")
+        let checker = SiteChecker(fetch: { _ in await counter.hit(); try await Task.sleep(for: .milliseconds(100)); return html }, notifier: recorder)
+        async let first = checker.run(store: store)
+        async let second = checker.run(store: store)
+        _ = await (first, second)
+        #expect(await counter.count == 1)        // the second run saw the first one working and did nothing
+        #expect(!store.isChecking)               // and the flag is released again
+        _ = await checker.run(store: store)
+        #expect(await counter.count == 2)        // a later run works normally
     }
 
     @Test func lastCheckIsSet() async {

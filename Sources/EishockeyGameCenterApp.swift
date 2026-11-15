@@ -4,6 +4,12 @@ import UserNotifications
 @main
 struct EishockeyGameCenterApp: App {
     @Environment(\.scenePhase) private var scenePhase
+    // While the app is open the watched pages are checked at once and then every minute; in the background iOS decides.
+    @State private var autoChecker = AutoChecker(interval: .seconds(60)) {
+        let store = WatchStore.shared
+        guard !store.pages.isEmpty else { return }
+        _ = await SiteChecker(notifier: SystemNotifier()).run(store: store)
+    }
 
     init() {
         BackgroundRefresh.register()
@@ -20,8 +26,10 @@ struct EishockeyGameCenterApp: App {
     var body: some Scene {
         WindowGroup {
             GameCenterView()
+                .onAppear { if scenePhase == .active { autoChecker.start() } }
         }
         .onChange(of: scenePhase) { _, phase in
+            if phase == .active { autoChecker.start() } else { autoChecker.stop() }
             if phase == .background { BackgroundRefresh.schedule() }
         }
     }

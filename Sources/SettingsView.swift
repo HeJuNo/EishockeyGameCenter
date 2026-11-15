@@ -8,7 +8,8 @@ struct SettingsView: View {
     @State private var store = WatchStore.shared
     @State private var checking = false
     @State private var checkResult: String?
-    @State private var notificationsDenied = false
+    @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
+    @State private var testResult: String?
 
     var body: some View {
         NavigationStack {
@@ -34,7 +35,7 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-            .task { notificationsDenied = await NotificationAccess.isDenied() }
+            .task { notificationStatus = await NotificationAccess.status() }
         }
     }
 
@@ -78,17 +79,46 @@ struct SettingsView: View {
             .disabled(checking || store.pages.isEmpty)
             if let checkResult { Text(checkResult).foregroundStyle(.secondary) }
             if let last = store.lastCheck { Text("Last check: \(last.formatted(date: .abbreviated, time: .shortened))").foregroundStyle(.secondary) }
-            if notificationsDenied {
-                Button("Notifications are off for this app. Open Settings.") {
+            Text(statusText).foregroundStyle(.secondary)
+            if notificationStatus == .notDetermined {
+                Button("Allow notifications") {
+                    Task { _ = await NotificationAccess.request(); notificationStatus = await NotificationAccess.status() }
+                }
+            }
+            if notificationStatus == .denied {
+                Button("Open iOS Settings") {
                     if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                 }
             }
+            Button("Send test notification") { Task { await sendTest() } }
+            if let testResult { Text(testResult).foregroundStyle(.secondary) }
             if UIApplication.shared.backgroundRefreshStatus != .available {
                 Text("Background App Refresh is off, so pages are only checked with \"Check now\".").foregroundStyle(.secondary)
             }
         } footer: {
             Text("iOS decides when pages are checked in the background, so changes can arrive late.")
         }
+    }
+
+    private var statusText: String {
+        switch notificationStatus {
+        case .authorized, .provisional, .ephemeral: "Notifications are allowed for this app."
+        case .denied: "Notifications are off for this app."
+        default: "Notifications have not been allowed yet."
+        }
+    }
+
+    /// Posts one notification now, so the whole path (permission, banner, sound) can be checked without waiting for a change.
+    private func sendTest() async {
+        if notificationStatus == .notDetermined { _ = await NotificationAccess.request() }
+        notificationStatus = await NotificationAccess.status()
+        guard notificationStatus == .authorized || notificationStatus == .provisional || notificationStatus == .ephemeral else {
+            testResult = "Notifications are off for this app, so nothing can be shown."
+            return
+        }
+        let page = WatchedPage(url: URL(string: "https://www.eishockey.at/game-center/ice/tabelle")!, kind: .table, title: "Eishockey GameCenter")
+        await SystemNotifier().post([Change(page: page, kind: .updated, title: "Test", body: "Mitteilungen funktionieren")])
+        testResult = "Test sent. It should appear in a moment."
     }
 
     private static func label(_ kind: PageKind) -> String {

@@ -20,6 +20,10 @@ struct SiteChecker {
 
     /// One page after the other. A page that cannot be fetched or read is skipped and keeps its stored state.
     func run(store: WatchStore, now: Date = .now) async -> [Change] {
+        // The automatic check, "Check now" and the background task can start together: only one run may work on the store.
+        guard !store.isChecking else { return [] }
+        store.isChecking = true
+        defer { store.isChecking = false }
         var all: [Change] = []
         for page in store.pages {
             guard let html = try? await fetch(page.url), let snapshot = PageParser.snapshot(html: html, kind: page.kind) else { continue }

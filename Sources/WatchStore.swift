@@ -21,6 +21,7 @@ final class WatchStore {
     private(set) var enabledCategories = Set(NotificationCategory.allCases)
     private(set) var lastCheck: Date?
     @ObservationIgnored private let file: URL
+    @ObservationIgnored var isChecking = false   // a check is running on this store (see SiteChecker.run)
 
     init(directory: URL) {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

@@ -26,6 +26,9 @@ enum NotificationAccess {
     static func request() async -> Bool {
         (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])) ?? false
     }
+    static func status() async -> UNAuthorizationStatus {
+        await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+    }
     static func isDenied() async -> Bool {
         await UNUserNotificationCenter.current().notificationSettings().authorizationStatus == .denied
     }
