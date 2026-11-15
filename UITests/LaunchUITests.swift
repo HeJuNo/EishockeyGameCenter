@@ -40,7 +40,8 @@ final class LaunchUITests: XCTestCase {
         app.launchArguments = ["-appearance", "system"]
         app.launch()
         let gear = app.buttons["Settings"]
-        XCTAssertTrue(gear.waitForExistence(timeout: 20), "settings button on the start page")
+        XCTAssertTrue(gear.waitForExistence(timeout: 40), "settings button on the start page")
+        XCTAssertTrue(app.links["ICE"].firstMatch.waitForExistence(timeout: 40), "start page content")   // a tap while the page still loads is dropped
         gear.tap()
         let dark = app.buttons["Dark"]
         XCTAssertTrue(dark.waitForExistence(timeout: 5))
@@ -56,7 +57,8 @@ final class LaunchUITests: XCTestCase {
 
     private func openSettings(_ app: XCUIApplication) {
         let gear = app.buttons["Settings"]
-        XCTAssertTrue(gear.waitForExistence(timeout: 20), "settings button on the start page")
+        XCTAssertTrue(gear.waitForExistence(timeout: 40), "settings button on the start page")
+        XCTAssertTrue(app.links["ICE"].firstMatch.waitForExistence(timeout: 40), "start page content")   // a tap while the page still loads is dropped
         gear.tap()
         XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
     }

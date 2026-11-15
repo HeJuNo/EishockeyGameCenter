@@ -27,4 +27,13 @@ import WebKit
         await controller.toggleWatch()
         #expect(store.pages.isEmpty)
     }
+
+    /// An opaque web view paints white until the page is ready: a white flash at every start in dark mode.
+    /// Transparent, the app's own page-colored background shows instead.
+    @Test func webViewIsTransparentSoNoWhiteFlashShows() {
+        let controller = WebController(url: URL(string: "https://www.eishockey.at/game-center")!)
+        #expect(controller.webView.isOpaque == false)
+        #expect(controller.webView.backgroundColor == .clear)
+        #expect(controller.webView.scrollView.backgroundColor == .clear)
+    }
 }

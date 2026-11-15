@@ -28,6 +28,9 @@ final class WebController: NSObject, WKNavigationDelegate, WKScriptMessageHandle
         for name in [PageRules.backMessageName, PageRules.settingsMessageName, PageRules.watchMessageName] {
             webView.configuration.userContentController.add(WeakMessageHandler(self), name: name)
         }
+        webView.isOpaque = false                       // no white flash before the page is ready: the app's page-colored background shows through
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
         webView.navigationDelegate = self
         webView.allowsBackForwardNavigationGestures = true
         let refresh = UIRefreshControl()
