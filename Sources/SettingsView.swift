@@ -48,7 +48,7 @@ struct SettingsView: View {
             ForEach(store.pages) { page in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(page.title)
-                    Text(Self.label(page.kind)).font(.caption).foregroundStyle(.secondary)
+                    Text([page.leagueLabel, page.kindLabel].compactMap { $0 }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
                 }
                 .swipeActions { Button("Stop watching", role: .destructive) { store.remove(page) } }
             }
@@ -122,16 +122,6 @@ struct SettingsView: View {
         testResult = "Test sent. It should appear in a moment."
     }
 
-    private static func label(_ kind: PageKind) -> String {
-        switch kind {
-        case .game: "Game"
-        case .team: "Team"
-        case .table: "Table"
-        case .goalies: "Goalies"
-        case .topscorers: "Top scorers"
-        case .teamStats: "Team statistics"
-        }
-    }
     private static func label(_ category: NotificationCategory) -> String {
         switch category {
         case .score: "Scores and game start/end"

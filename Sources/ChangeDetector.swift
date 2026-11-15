@@ -55,7 +55,7 @@ enum ChangeDetector {
             switch new.kind {
             case .table: body = "Tabelle aktualisiert"
             case .goalies: body = "Torhüter-Statistik aktualisiert"
-            case .topscorers: body = "Topscorer aktualisiert"
+            case .topscorers: body = page.isPenaltyList ? "Strafenliste aktualisiert" : "Spielerstatistik aktualisiert"
             case .teamStats: body = "Team-Statistik aktualisiert"
             default: body = "Team-Seite aktualisiert"
             }

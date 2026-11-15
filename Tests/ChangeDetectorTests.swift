@@ -62,7 +62,7 @@ import Testing
 
     @Test func otherKinds() {
         let expected: [(PageKind, String)] = [(.table, "Tabelle aktualisiert"), (.goalies, "Torhüter-Statistik aktualisiert"),
-                                              (.topscorers, "Topscorer aktualisiert"), (.team, "Team-Seite aktualisiert"), (.teamStats, "Team-Statistik aktualisiert")]
+                                              (.topscorers, "Spielerstatistik aktualisiert"), (.team, "Team-Seite aktualisiert"), (.teamStats, "Team-Statistik aktualisiert")]
         for (kind, body) in expected {
             let c = detect(other(kind, hash: "a"), other(kind, hash: "b"))
             #expect(c.map(\.kind) == [.updated], Comment(rawValue: "\(kind)"))

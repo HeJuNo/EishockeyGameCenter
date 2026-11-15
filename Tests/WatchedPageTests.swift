@@ -33,3 +33,29 @@ import Testing
         #expect(Watchable.normalized(url("https://www.eishockey.at/game-center/ice/tabelle?saison=2026&utm=1")) == url("https://www.eishockey.at/game-center/ice/tabelle?saison=2026"))
     }
 }
+
+@MainActor @Suite struct PageLabelTests {
+    private func page(_ u: String) -> WatchedPage {
+        let url = Watchable.normalized(URL(string: u)!)
+        return WatchedPage(url: url, kind: Watchable.kind(of: url)!, title: "win2day ICE Hockey League")
+    }
+
+    @Test func playersAndPenaltiesAreTwoPages() {
+        let players = page("https://www.eishockey.at/game-center/ice/topscorer?saison=2026")
+        let penalties = page("https://www.eishockey.at/game-center/ice/topscorer?saison=2026&wertung=strafen")
+        #expect(players.id != penalties.id)
+        #expect(players.kindLabel == "Players" && penalties.kindLabel == "Penalty list")
+    }
+
+    @Test func labelsAndLeague() {
+        #expect(page("https://www.eishockey.at/game-center/alps/torhueter").kindLabel == "Goalies")
+        #expect(page("https://www.eishockey.at/game-center/ice/teams").kindLabel == "Team statistics")
+        #expect(page("https://www.eishockey.at/game-center/alps/tabelle").leagueLabel == "ALPS")
+    }
+
+    @Test func penaltyListGetsItsOwnNotificationText() {
+        let p = page("https://www.eishockey.at/game-center/ice/topscorer?wertung=strafen")
+        let a = PageSnapshot(kind: .topscorers, title: "x", textHash: "1", game: nil), b = PageSnapshot(kind: .topscorers, title: "x", textHash: "2", game: nil)
+        #expect(ChangeDetector.changes(page: p, old: a, new: b).first?.body == "Strafenliste aktualisiert")
+    }
+}

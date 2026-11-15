@@ -8,6 +8,29 @@ struct WatchedPage: Codable, Hashable, Identifiable {
     let kind: PageKind
     var title: String
     var id: String { url.absoluteString }
+
+    /// The player page also serves the penalty list (`wertung=strafen`): they are two different pages.
+    var isPenaltyList: Bool {
+        kind == .topscorers && URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains { $0.name == "wertung" && $0.value == "strafen" } == true
+    }
+
+    /// What kind of page this is, in the settings: the site title is the league name for every league page.
+    var kindLabel: String {
+        switch kind {
+        case .game: "Game"
+        case .team: "Team"
+        case .table: "Table"
+        case .goalies: "Goalies"
+        case .topscorers: isPenaltyList ? "Penalty list" : "Players"
+        case .teamStats: "Team statistics"
+        }
+    }
+
+    /// The league from the address (ice, alps, ...), as the site writes it on its tabs.
+    var leagueLabel: String? {
+        let parts = url.path.split(separator: "/")
+        return parts.count > 1 ? parts[1].uppercased() : nil
+    }
 }
 
 enum Watchable {
