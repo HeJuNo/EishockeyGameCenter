@@ -129,8 +129,16 @@ final class WebController: NSObject, WKNavigationDelegate, WKScriptMessageHandle
         guard let error else { state = .loaded; return }
         if let failure = LoadState.failure(for: error) { state = failure; return }
         // A cancelled navigation that no new load follows: settle on the page that is still shown.
-        if !webView.isLoading { state = webView.url == nil ? .failed : .loaded }
+        guard !webView.isLoading else { return }
+        // A blocked page (Screen Time, a policy change) can leave an empty view behind: look at what is really shown.
+        Task {
+            let length = (try? await webView.evaluateJavaScript("document.body ? document.body.innerText.length : 0")) as? Int ?? 0
+            state = LoadState.afterInterruption(bodyTextLength: length)
+        }
     }
+
+    /// Back in the app (e.g. after a parent approved the site in Screen Time): try again when nothing is shown.
+    func reloadIfFailed() { if state == .failed { reload() } }
 
     // MARK: WKNavigationDelegate
 

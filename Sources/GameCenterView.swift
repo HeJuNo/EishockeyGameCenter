@@ -7,6 +7,7 @@ struct GameCenterView: View {
     @AppStorage("loadAllEntries") private var loadAllEntries = true
     // With "System" no override is set, so this is the system's appearance.
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
 
     private var setting: AppearanceSetting { AppearanceSetting(stored: stored) }
     private var isDark: Bool { setting.isDark(systemIsDark: colorScheme == .dark) }
@@ -36,6 +37,7 @@ struct GameCenterView: View {
             controller.start(dark: isDark, loadAll: loadAllEntries)
         }
         .onChange(of: WatchStore.shared.pages) { _, _ in controller.syncPageState() }   // e.g. a page was stopped in the settings
+        .onChange(of: scenePhase) { _, phase in if phase == .active { controller.reloadIfFailed() } }
         .onChange(of: isDark) { _, dark in controller.setDark(dark) }
         .onChange(of: loadAllEntries) { _, on in controller.setLoadAll(on) }
         .sheet(isPresented: $controller.showSettings) {

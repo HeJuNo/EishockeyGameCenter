@@ -25,6 +25,14 @@ import Testing
         c.webView(c.webView, didStartProvisionalNavigation: nil)
         #expect(c.state == .loading)
         c.webView(c.webView, didFailProvisionalNavigation: nil, withError: URLError(.cancelled))
+        for _ in 0..<100 where c.state != .loaded { try await Task.sleep(for: .milliseconds(50)) }   // it looks at the shown page first
         #expect(c.state == .loaded)
+    }
+}
+
+@MainActor @Suite struct InterruptionTests {
+    @Test func emptyPageAfterAnIgnoredErrorIsAFailure() {
+        #expect(LoadState.afterInterruption(bodyTextLength: 0) == .failed)
+        #expect(LoadState.afterInterruption(bodyTextLength: 1200) == .loaded)
     }
 }
