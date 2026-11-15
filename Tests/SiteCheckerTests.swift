@@ -72,6 +72,29 @@ import Testing
         #expect(recorder.posted.isEmpty)
     }
 
+    /// A game cannot lose its score or its lineup. A page that looks like that is a data hiccup: it must not replace the stored state,
+    /// or the next good page would look like a new "final result" / "lineup published".
+    @Test func gameThatLosesItsScoreOrLineupIsTreatedAsUnreadable() async {
+        let (store, site, recorder, checker) = setup()
+        store.toggle(page(gameURL, .game))
+        site.responses[gameURL] = fixture("game-final")
+        _ = await checker.run(store: store)                                      // baseline: 2:4, lineup
+        let stored = store.snapshots[store.pages[0].id]
+
+        site.responses[gameURL] = fixture("game-planned")                        // served once like a planned game: no score, no lineup
+        _ = await checker.run(store: store)
+        #expect(store.snapshots[store.pages[0].id] == stored)
+
+        site.responses[gameURL] = fixture("game-final").replacingOccurrences(of: "<h2>Aufstellung</h2>", with: "")   // score kept, lineup gone
+        _ = await checker.run(store: store)
+        #expect(store.snapshots[store.pages[0].id] == stored)
+
+        site.responses[gameURL] = fixture("game-final")                          // back to normal
+        let result = await checker.run(store: store)
+        #expect(result.isEmpty)
+        #expect(recorder.posted.isEmpty)
+    }
+
     @Test func disabledCategoryIsStillRecorded() async {
         let (store, site, recorder, checker) = setup()
         store.toggle(page(tableURL, .table))
